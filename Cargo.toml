@@ -1,0 +1,18 @@
+[package]
+name = "hwndloop"
+version = "0.1.0"
+authors = ["Josh Gao <josh@insolit.us>"]
+license = "MIT/Apache-2.0"
+
+description = "An implementation of an event loop backed by a Win32 window."
+readme = "README.md"
+documentation = "https://docs.rs/hwndloop"
+
+repository = "https://github.com/jmgao/hwndloop"
+keywords = ["hwnd", "windows", "win32"]
+exclude = ["/.rustfmt.toml"]
+
+[dependencies]
+log = "0.4.6"
+lazy_static = "1.2.0"
+winapi = { version = "0.3", features = ["winuser", "processthreadsapi"] }
