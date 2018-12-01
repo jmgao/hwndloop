@@ -1,6 +1,8 @@
 hwndloop
 ========
 
+[![Build status](https://ci.appveyor.com/api/projects/status/7pr1ono0cc66vwta?svg=true)](https://ci.appveyor.com/project/jmgao/hwndloop)
+
 An implementation of an event loop backed by a Win32 window.
 
 This is useful when interfacing with Windows APIs that communicate via messages
