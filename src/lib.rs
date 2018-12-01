@@ -66,8 +66,13 @@ impl<CommandType: Send + std::fmt::Debug> HwndLoopWndExtra<CommandType> {
 }
 
 lazy_static! {
-  static ref WM_HWNDLOOP_POKE: u32 = {
-    let msg = unsafe { RegisterWindowMessageA(b"WM_HWNDLOOP_POKE\0".as_ptr() as *const i8) };
+  static ref WM_HWNDLOOP_INIT: u32 = {
+    let msg = unsafe { RegisterWindowMessageA(b"WM_HWNDLOOP_INIT\0".as_ptr() as *const i8) };
+    assert_ne!(0, msg);
+    msg
+  };
+  static ref WM_HWNDLOOP_COMMAND: u32 = {
+    let msg = unsafe { RegisterWindowMessageA(b"WM_HWNDLOOP_COMMAND\0".as_ptr() as *const i8) };
     assert_ne!(0, msg);
     msg
   };
@@ -127,10 +132,9 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
       let command_queue = Arc::new(Mutex::new(VecDeque::new()));
       let flush_requests = Arc::new(Mutex::new(Vec::<std::sync::mpsc::Sender<()>>::new()));
 
-      let mut notified = false;
       let mut msg = unsafe { std::mem::uninitialized() };
 
-      let result = unsafe { PostMessageW(hwnd, *WM_HWNDLOOP_POKE, 0, 1) };
+      let result = unsafe { PostMessageW(hwnd, *WM_HWNDLOOP_INIT, 0, 1) };
       if result == 0 {
         panic!("failed to PostMessageW during message window startup: {}", std::io::Error::last_os_error());
       }
@@ -149,13 +153,10 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
         }
 
         // We're started, time to return the result.
-        if !notified {
+        if msg.message == *WM_HWNDLOOP_INIT {
           tx.send((HWNDWrapper(hwnd), command_queue.clone(), flush_requests.clone()))
             .unwrap();
-          notified = true;
-        }
-
-        if msg.message == *WM_HWNDLOOP_POKE {
+        } else if msg.message == *WM_HWNDLOOP_COMMAND {
           // Only process commands when we receive a poke, to ensure that we maintain ordering.
           let mut queue = command_queue.lock().unwrap();
           if !queue.is_empty() {
@@ -218,18 +219,13 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
     (*(*wnd_extra).callbacks).handle_message(hwnd, msg, w, l)
   }
 
-  /// Dispatch a message to the window to wake up the handler thread.
-  fn poke(&self) {
-    let result = unsafe { PostMessageW(self.hwnd.0, *WM_HWNDLOOP_POKE, 0, 1) };
-    if result == FALSE {
-      panic!("PostMessageW failed: {}", std::io::Error::last_os_error());
-    }
-  }
-
   fn send_command_internal(&self, cmd: HwndLoopCommand<CommandType>) {
     let mut queue = self.command_queue.lock().unwrap();
     queue.push_back(cmd);
-    self.poke();
+    let result = unsafe { PostMessageW(self.hwnd.0, *WM_HWNDLOOP_COMMAND, 0, 1) };
+    if result == FALSE {
+      panic!("PostMessageW failed: {}", std::io::Error::last_os_error());
+    }
   }
 
   pub fn send_command(&self, cmd: CommandType) {
