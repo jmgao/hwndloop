@@ -132,7 +132,7 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
 
       let result = unsafe { PostMessageW(hwnd, *WM_HWNDLOOP_POKE, 0, 1) };
       if result == 0 {
-        panic!("failed to PostMessageW during message window startup");
+        panic!("failed to PostMessageW during message window startup: {}", std::io::Error::last_os_error());
       }
 
       callbacks.set_up(hwnd);
@@ -221,8 +221,8 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
   /// Dispatch a message to the window to wake up the handler thread.
   fn poke(&self) {
     let result = unsafe { PostMessageW(self.hwnd.0, *WM_HWNDLOOP_POKE, 0, 1) };
-    if result == 0 {
-      warn!("PostMessageW failed");
+    if result == FALSE {
+      panic!("PostMessageW failed: {}", std::io::Error::last_os_error());
     }
   }
 
@@ -243,7 +243,11 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
     let mut requests = self.flush_requests.lock().unwrap();
 
     (*requests).push(tx);
-    assert_ne!(FALSE, unsafe { PostMessageW(self.hwnd.0, *WM_HWNDLOOP_FLUSH, 0, 0) });
+    let result = unsafe { PostMessageW(self.hwnd.0, *WM_HWNDLOOP_FLUSH, 0, 0) };
+    if result == FALSE {
+      panic!("PostMessageW failed: {}", std::io::Error::last_os_error());
+    }
+
     drop(requests);
 
     rx.recv().unwrap();

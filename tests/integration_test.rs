@@ -83,7 +83,7 @@ mod test {
 
     let hwnd = rx.recv().unwrap();
 
-    let (begin, end) = (0, 65536);
+    let (begin, end) = (0, 10000);
     for i in begin..end {
       if i % 2 == 0 {
         hwndloop.send_command(TestCommand::Push(i));
