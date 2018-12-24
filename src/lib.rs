@@ -31,18 +31,21 @@ pub struct HWNDWrapper(pub HWND);
 unsafe impl Send for HWNDWrapper {}
 unsafe impl Sync for HWNDWrapper {}
 
+#[allow(unused_variables)]
 pub trait HwndLoopCallbacks<CommandType: std::fmt::Debug>: Send {
   /// Called on the handler thread just before the HwndLoop starts.
-  fn set_up(&mut self, hwnd: HWND);
+  fn set_up(&mut self, hwnd: HWND) {}
 
   /// Called on the handler thread just after the HwndLoop terminates.
-  fn tear_down(&mut self, hwnd: HWND);
+  fn tear_down(&mut self, hwnd: HWND) {}
 
-  /// Handle a Windows message. Note that most messages should have DefWindowProcW called on them for cleanup.
-  fn handle_message(&mut self, hwnd: HWND, msg: UINT, w: WPARAM, l: LPARAM) -> LRESULT;
+  /// Handle a Windows message. Note that most messages should have DefWindowProcA called on them for cleanup.
+  fn handle_message(&mut self, hwnd: HWND, msg: UINT, w: WPARAM, l: LPARAM) -> LRESULT {
+    unsafe { DefWindowProcA(hwnd, msg, w, l) }
+  }
 
   /// Handle a command sent via send_command on the HwndLoop.
-  fn handle_command(&mut self, hwnd: HWND, cmd: CommandType);
+  fn handle_command(&mut self, hwnd: HWND, cmd: CommandType) {}
 }
 
 pub struct HwndLoop<CommandType: Send + std::fmt::Debug + 'static> {
