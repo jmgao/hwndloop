@@ -136,7 +136,10 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
 
       let result = unsafe { PostMessageW(hwnd, *WM_HWNDLOOP_INIT, 0, 1) };
       if result == 0 {
-        panic!("failed to PostMessageW during message window startup: {}", std::io::Error::last_os_error());
+        panic!(
+          "failed to PostMessageW during message window startup: {}",
+          std::io::Error::last_os_error()
+        );
       }
 
       callbacks.set_up(hwnd);
