@@ -1,7 +1,7 @@
 hwndloop
 ========
 
-[![CircleCI](https://circleci.com/gh/jmgao/hwndloop.svg?style=svg)](https://circleci.com/gh/jmgao/hwndloop)
+[![CircleCI](https://circleci.com/gh/jmgao/hwndloop.svg?style=svg)](https://circleci.com/gh/jmgao/hwndloop) [![Docs](https://docs.rs/hwndloop/badge.svg)](https://docs.rs/hwndloop)
 
 An implementation of an event loop backed by a Win32 window.
 
