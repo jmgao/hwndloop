@@ -272,8 +272,10 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
 
     rx.recv().unwrap();
   }
+}
 
-  fn terminate(&self) {
+impl<CommandType: Send + std::fmt::Debug + 'static> Drop for HwndLoop<CommandType> {
+  fn drop(&mut self) {
     let terminated = self.terminated.swap(true, Ordering::SeqCst);
     if !terminated {
       self.send_command_internal(HwndLoopCommand::Terminate);
@@ -281,11 +283,5 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
       let join_handle = std::mem::replace(&mut *opt, None);
       join_handle.unwrap().join().unwrap();
     }
-  }
-}
-
-impl<CommandType: Send + std::fmt::Debug + 'static> Drop for HwndLoop<CommandType> {
-  fn drop(&mut self) {
-    self.terminate();
   }
 }
