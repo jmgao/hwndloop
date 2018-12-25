@@ -1,3 +1,5 @@
+//! An implementation of an event loop backed by a Win32 window.
+
 #![cfg(windows)]
 
 #[macro_use]
@@ -27,31 +29,42 @@ enum HwndLoopCommand<CommandType: Send + std::fmt::Debug> {
   UserCommand(CommandType),
 }
 
-/// HWND is a raw pointer, which can't be made to implement Send or Sync.
+/// Send and Sync wrapper for [`HWND`].
+///
+/// [`HWND`] is a raw pointer, which can't be made [`Send`] or [`Sync`] directly, so wrap it in a helper type.
 #[derive(Clone)]
-pub struct HWNDWrapper(pub HWND);
-unsafe impl Send for HWNDWrapper {}
-unsafe impl Sync for HWNDWrapper {}
+pub struct HwndWrapper(pub HWND);
+unsafe impl Send for HwndWrapper {}
+unsafe impl Sync for HwndWrapper {}
 
+/// Callbacks called by a [`HwndLoop`].
 #[allow(unused_variables)]
 pub trait HwndLoopCallbacks<CommandType: std::fmt::Debug>: Send {
-  /// Called on the handler thread just before the HwndLoop starts.
+  /// Called on the handler thread just before the [`HwndLoop`] starts.
   fn set_up(&mut self, hwnd: HWND) {}
 
-  /// Called on the handler thread just after the HwndLoop terminates.
+  /// Called on the handler thread just before the [`HwndLoop`] terminates.
+  ///
+  /// Note that if you need to wait for a message to finish tearing down, it is too late by this
+  /// point. The HWND and thread will be destroyed immediateliy after this function returns.
   fn tear_down(&mut self, hwnd: HWND) {}
 
-  /// Handle a Windows message. Note that most messages should have DefWindowProcA called on them for cleanup.
+  /// Handle a Windows message.
+  ///
+  /// Note that most messages need to have [`DefWindowProcA`] called on them for cleanup.
   fn handle_message(&mut self, hwnd: HWND, msg: UINT, w: WPARAM, l: LPARAM) -> LRESULT {
     unsafe { DefWindowProcA(hwnd, msg, w, l) }
   }
 
-  /// Handle a command sent via send_command on the HwndLoop.
+  /// Handle a command sent via [`HwndLoop::send_command`].
   fn handle_command(&mut self, hwnd: HWND, cmd: CommandType) {}
 }
 
+/// An event loop backed by a Win32 window and thread.
+///
+/// A [`HwndLoop`] consists of a message window and handler thread on which all callbacks happen.
 pub struct HwndLoop<CommandType: Send + std::fmt::Debug + 'static> {
-  hwnd: HWNDWrapper,
+  hwnd: HwndWrapper,
   terminated: Arc<AtomicBool>,
   command_queue: Arc<Mutex<VecDeque<HwndLoopCommand<CommandType>>>>,
   join_handle: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
@@ -89,6 +102,7 @@ lazy_static! {
 }
 
 impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
+  /// Create a new [`HwndLoop`].
   pub fn new(mut callbacks: Box<HwndLoopCallbacks<CommandType>>) -> HwndLoop<CommandType> {
     let (tx, rx) = channel();
     let join_handle = std::thread::spawn(move || {
@@ -162,7 +176,7 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
 
         // We're started, time to return the result.
         if msg.message == *WM_HWNDLOOP_INIT {
-          tx.send((HWNDWrapper(hwnd), command_queue.clone(), flush_requests.clone()))
+          tx.send((HwndWrapper(hwnd), command_queue.clone(), flush_requests.clone()))
             .unwrap();
         } else if msg.message == *WM_HWNDLOOP_COMMAND {
           // Only process commands when we receive a poke, to ensure that we maintain ordering.
@@ -236,6 +250,8 @@ impl<CommandType: Send + std::fmt::Debug + 'static> HwndLoop<CommandType> {
     }
   }
 
+  /// Send a command to a [`HwndLoop`], to be handled by [`HwndLoopCallbacks::handle_command`] on
+  /// the handler thread.
   pub fn send_command(&self, cmd: CommandType) {
     trace!("HwndLoop sending user command: {:?}", cmd);
     self.send_command_internal(HwndLoopCommand::UserCommand(cmd))
