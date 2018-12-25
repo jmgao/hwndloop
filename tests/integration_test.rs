@@ -18,7 +18,7 @@ mod test {
   enum TestCommand {
     Push(i32),
     Pop(Sender<Option<i32>>),
-    GetHWND(Sender<HWNDWrapper>),
+    GetHWND(Sender<HwndWrapper>),
   }
 
   struct Test {
@@ -44,7 +44,7 @@ mod test {
       match cmd {
         TestCommand::Push(i) => self.queue.push_back(i),
         TestCommand::Pop(tx) => tx.send(self.queue.pop_front()).unwrap(),
-        TestCommand::GetHWND(tx) => tx.send(HWNDWrapper(hwnd)).unwrap(),
+        TestCommand::GetHWND(tx) => tx.send(HwndWrapper(hwnd)).unwrap(),
       }
     }
   }
