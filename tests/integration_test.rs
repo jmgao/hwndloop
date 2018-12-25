@@ -1,3 +1,5 @@
+#![cfg(windows)]
+
 extern crate hwndloop;
 extern crate winapi;
 
