@@ -16,3 +16,6 @@ exclude = ["/.rustfmt.toml"]
 log = "0.4.6"
 lazy_static = "1.2.0"
 winapi = { version = "0.3", features = ["winuser", "processthreadsapi"] }
+
+[package.metadata.docs.rs]
+default-target = "x86_64-pc-windows-gnu"
