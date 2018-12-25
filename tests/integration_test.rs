@@ -32,9 +32,6 @@ mod test {
   }
 
   impl HwndLoopCallbacks<TestCommand> for Test {
-    fn set_up(&mut self, _hwnd: HWND) {}
-    fn tear_down(&mut self, _hwnd: HWND) {}
-
     fn handle_message(&mut self, hwnd: HWND, msg: UINT, w: WPARAM, l: LPARAM) -> LRESULT {
       if msg == WM_USER {
         self.queue.push_back(w as i32);
